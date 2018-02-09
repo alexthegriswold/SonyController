@@ -6,6 +6,15 @@
 //  Copyright © 2018 com.example. All rights reserved.
 //
 
+
+//I need to have a live view image and a display image.
+//The display image will be on top of the live view image.
+//That way we can start downloading the live view once the image is downloaded.
+
+//Call connectCamera to be able to make any API calls
+//Call start live view to startLiveView and download liveView.
+
+
 import UIKit
 import SwiftyJSON
 
@@ -25,6 +34,7 @@ class CameraController: NSObject, URLSessionDelegate, URLSessionDataDelegate  {
         didSet {
             DispatchQueue.main.async {
                 self.delegate?.imageDidDownload(image: self.downloadedImage!)
+                self.startLiveView()
             }
         }
     }
@@ -178,15 +188,21 @@ class CameraController: NSObject, URLSessionDelegate, URLSessionDataDelegate  {
             let responseJSON = try? JSONSerialization.jsonObject(with: data, options: [])
             
             let json = JSON(responseJSON)
-            if json["error"] == nil {
-                print("helllo")
+            if json["error"] == JSON.null {
+                self.delegate?.cameraDidConnect(didConnect: true)
+                self.startLiveView()
+                
+                /*
+                let when = DispatchTime.now() + 10
+                DispatchQueue.main.asyncAfter(deadline: when, execute: {
+                    self.startLiveView()
+                })
+ */
+            } else {
+                self.delegate?.cameraDidConnect(didConnect: false)
             }
-         
-    
-            
         }
         task.resume()
-        
     }
     
     /*
@@ -194,6 +210,20 @@ class CameraController: NSObject, URLSessionDelegate, URLSessionDataDelegate  {
      */
     func diconnectCamera() {
         self.httpPost(method: "stopRecMode", params: [], version: "1.0", id: 1)
+    }
+    
+    
+    /*
+     * Calls stop downloading live view, waits one second, takes
+     * a picture, and then downloads the image.
+     */
+    
+    func startTakingPicture() {
+        self.dataTask.suspend()
+        let when = DispatchTime.now() + 1
+        DispatchQueue.main.asyncAfter(deadline: when) {
+            self.takePicture()
+        }
     }
     
     func takePicture() {
@@ -459,6 +489,66 @@ class CameraController: NSObject, URLSessionDelegate, URLSessionDataDelegate  {
         task.resume()
     }
     
+    
+    func checkIfLiveViewIsAvailable() {
+        struct JSONStuff: Codable {
+            var method: String
+            var params: [Bool]
+            var id: Int
+            var version: String
+        }
+        
+        var response: String
+        
+        let thing = JSONStuff(method: "getEvent", params: [true], id: 1, version: "1.2")
+        
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = .prettyPrinted
+        
+        let data = try! encoder.encode(thing)
+        
+        // create post request
+        let url = URL(string: "http://192.168.122.1:8080/sony/camera")!
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        
+        // insert json data to the request
+        request.httpBody = data
+        
+        let task = URLSession.shared.dataTask(with: request) { data, response, error in
+            guard let data = data, error == nil else {
+                //print(error?.localizedDescription ?? "No data")
+                return
+            }
+            let responseJSON = try? JSONSerialization.jsonObject(with: data, options: [])
+            
+            let json = JSON(responseJSON)
+            
+            print(json)
+            /*
+            // Bool
+            if let id = json["result"] {
+                print("Liveview: ", id)
+            } else {
+                // Print the error
+                print(json["result"][1]["cameraStatus"].error!)
+            }
+            */
+            /*
+            print("LiveView: ", otherThing)
+            if otherThing == "hey" {
+                self.startLiveView()
+            } else {
+                let when = DispatchTime.now() + 1
+                DispatchQueue.main.asyncAfter(deadline: when, execute: {
+                    self.checkIfLiveViewIsAvailable()
+                })
+            }
+            */
+        }
+        task.resume()
+    }
+    
     func getEvent() {
         struct JSONStuff: Codable {
             var method: String
@@ -473,8 +563,6 @@ class CameraController: NSObject, URLSessionDelegate, URLSessionDataDelegate  {
         encoder.outputFormatting = .prettyPrinted
         
         let data = try! encoder.encode(thing)
-        
-        
         
         // create post request
         let url = URL(string: "http://192.168.122.1:8080/sony/camera")!
@@ -493,8 +581,10 @@ class CameraController: NSObject, URLSessionDelegate, URLSessionDataDelegate  {
             
             let json = JSON(responseJSON)
            
-            let otherThing = json["result"][40]
+            let otherThing = json["result"][3]["liveviewStatus"]
             
+            print(otherThing.stringValue)
+            /*
             let arrayNames =  json["result"][40]["contShootingUrl"].arrayValue.map({$0["postviewUrl"].stringValue})
             
             for name in arrayNames {
@@ -506,7 +596,7 @@ class CameraController: NSObject, URLSessionDelegate, URLSessionDataDelegate  {
             
             self.downloadImages()
             
-            
+            */
         }
         task.resume()
     }
@@ -549,8 +639,42 @@ class CameraController: NSObject, URLSessionDelegate, URLSessionDataDelegate  {
      * Sends the start live view command to the camera and begins downloading.
      */
     func startLiveView() {
-        self.httpPost(method: "startLiveview", params: [], version: "1.0", id: 1)
-        self.downloadLiveView()
+        
+        print("connecting camera")
+        
+        let json: [String: Any] = ["method":"startLiveview", "params":[], "version": "1.0", "id": 1]
+        
+        let jsonData = try? JSONSerialization.data(withJSONObject: json)
+        
+        // create post request
+        let url = URL(string: "http://192.168.122.1:8080/sony/camera")!
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        
+        // insert json data to the request
+        request.httpBody = jsonData
+        
+        let task = URLSession.shared.dataTask(with: request) { data, response, error in
+            
+            guard let data = data, error == nil else {
+                //print(error?.localizedDescription ?? "No data")
+                return
+            }
+            
+            let responseJSON = try? JSONSerialization.jsonObject(with: data, options: [])
+            
+            let json = JSON(responseJSON)
+            if json["error"] == JSON.null {
+                self.downloadLiveView()
+            } else {
+                print("start live view failed")
+            }
+        }
+        task.resume()
+        
+        
+        //self.httpPost(method: "startLiveview", params: [], version: "1.0", id: 1)
+        //self.downloadLiveView()
     }
     
     /*
@@ -585,7 +709,7 @@ class CameraController: NSObject, URLSessionDelegate, URLSessionDataDelegate  {
         
         if let liveViewFrame = liveViewFrame {
             previousLiveViewFrame = liveViewFrame
-            delegate?.imageDidDownload(image: liveViewFrame)
+            delegate?.liveViewDidDownload(image: liveViewFrame)
         }
     }
     
@@ -658,7 +782,12 @@ class CameraController: NSObject, URLSessionDelegate, URLSessionDataDelegate  {
 
 protocol CameraControllerDelegate: class {
     func imageDidDownload(image: UIImage)
+    func liveViewDidDownload(image: UIImage)
     func shootingDidStart()
+    
+    //didConnect is true if connection was successul
+    //false is connection was unsuccessful
+    func cameraDidConnect(didConnect: Bool)
     
 }
 

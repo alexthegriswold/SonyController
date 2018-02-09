@@ -10,11 +10,11 @@
             ignoreCount = "0"
             continueAfterRunningActions = "No"
             filePath = "SonyController/CameraController.swift"
-            timestampString = "539882090.287456"
+            timestampString = "539904613.70056"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "226"
-            endingLineNumber = "226"
+            startingLineNumber = "256"
+            endingLineNumber = "256"
             landmarkName = "takePicture()"
             landmarkType = "7">
          </BreakpointContent>
@@ -26,11 +26,11 @@
             ignoreCount = "0"
             continueAfterRunningActions = "No"
             filePath = "SonyController/CameraController.swift"
-            timestampString = "539882090.288542"
+            timestampString = "539904613.70064"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "223"
-            endingLineNumber = "223"
+            startingLineNumber = "253"
+            endingLineNumber = "253"
             landmarkName = "takePicture()"
             landmarkType = "7">
          </BreakpointContent>

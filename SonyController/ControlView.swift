@@ -58,6 +58,13 @@ class ControlView: UIView, CameraControllerDelegate {
         return imageView
     }()
     
+    var liveViewImage: UIImageView = {
+        let imageView = UIImageView()
+        imageView.clipsToBounds = true
+        imageView.contentMode = .scaleToFill
+        return imageView
+    }()
+    
     var timer: Timer?
     
     
@@ -72,6 +79,7 @@ class ControlView: UIView, CameraControllerDelegate {
         self.addSubview(connectCamera)
         self.addSubview(startLiveView)
         self.addSubview(takePicture)
+        self.addSubview(liveViewImage)
         self.addSubview(imageView)
         self.addSubview(stopCont)
         self.addSubview(getEvent)
@@ -86,9 +94,7 @@ class ControlView: UIView, CameraControllerDelegate {
 
     }
     
-    func imageDidDownload(image: UIImage) {
-        self.imageView.image = image
-    }
+    
     
     
     required init?(coder aDecoder: NSCoder) {
@@ -100,19 +106,21 @@ class ControlView: UIView, CameraControllerDelegate {
     }
     
     @objc func tappedStartLiveView() {
-        /*
+        
         cameraController.startLiveView()
- */
+ 
+        /*
         cameraController.setContinuousShooting()
         cameraController.setContShootingSpeed()
+ */
     }
     
     @objc func tappedTakePicture() {
-        /*
-        cameraController.stopLiveView()
-        cameraController.takePicture()
- */
-        cameraController.startCont()
+        
+        //cameraController.stopLiveView()
+        cameraController.startTakingPicture()
+ 
+        //cameraController.startCont()
     
     }
     
@@ -124,11 +132,27 @@ class ControlView: UIView, CameraControllerDelegate {
     }
     
     @objc func pressedGetEvent() {
-        cameraController.getEvent()
+        //cameraController.getEvent()
+        cameraController.httpPost(method: "stopRecMode", params: [], version: "1.0", id: 1)
     }
     
-    func shootingDidStart() {
+    //MARK: Delegate Methods
+    func imageDidDownload(image: UIImage) {
+        self.imageView.image = image
+        self.imageView.isHidden = false
+        let when = DispatchTime.now() + 3
+        DispatchQueue.main.asyncAfter(deadline: when) {
+            self.imageView.isHidden = true
+        }
         
+    }
+    
+    func liveViewDidDownload(image: UIImage) {
+        self.liveViewImage.image = image
+    }
+    
+    
+    func shootingDidStart() {
         
         var when = DispatchTime.now() + 2.0 // change 2 to desired number of seconds
         DispatchQueue.main.asyncAfter(deadline: when) {
@@ -137,6 +161,13 @@ class ControlView: UIView, CameraControllerDelegate {
         }
     }
    
+    func cameraDidConnect(didConnect: Bool) {
+        if didConnect == true {
+            print("connection was successful")
+        } else {
+            //show alert 
+        }
+    }
     
     override func layoutSubviews() {
         connectCamera.frame = CGRect(x: 0, y: 0, width: 200, height: 100)
@@ -144,6 +175,7 @@ class ControlView: UIView, CameraControllerDelegate {
         takePicture.frame = CGRect(x: 0, y: 200, width: 200, height: 100)
         stopCont.frame = CGRect(x: 0, y: 300, width: 200, height: 100)
         getEvent.frame = CGRect(x: 0, y: 400, width: 200, height: 100)
+        liveViewImage.frame = CGRect(x: 0, y: 500, width: 300, height: 200)
         imageView.frame = CGRect(x: 0, y: 500, width: 300, height: 200)
     }
     
